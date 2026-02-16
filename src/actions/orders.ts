@@ -58,7 +58,9 @@ async function recalculateOrderTotal(orderId: string): Promise<void> {
     throw new Error(`Chyba pri nacitani polozek zakazky: ${itemsError.message}`)
   }
 
-  const totalPriceWithoutVat = (items ?? []).reduce((sum, item) => {
+  const totalPriceWithoutVat = ((items ?? []) as Array<{
+    unit_price: number; quantity: number; discount_percent: number
+  }>).reduce((sum, item) => {
     const lineTotal =
       item.unit_price * item.quantity * (1 - item.discount_percent / 100)
     return sum + lineTotal
@@ -251,7 +253,7 @@ export async function createOrder(
     // Validace dat
     const parsed = orderFormSchema.safeParse(formData)
     if (!parsed.success) {
-      const firstError = parsed.error.errors[0]
+      const firstError = parsed.error.issues[0]
       return {
         data: null,
         error: firstError?.message ?? "Neplatna data formulare.",
@@ -291,7 +293,7 @@ export async function createOrder(
     // Zalogovat vytvoreni
     await logActivity(order.id, "order_created", `Zakazka vytvorena rucne pro klienta ${data.client_name}.`)
 
-    revalidatePath("/orders")
+    revalidatePath("/zakazky")
     revalidatePath("/dashboard")
 
     return { data: { id: order.id }, error: null }
@@ -316,7 +318,7 @@ export async function updateOrder(
     const partialSchema = orderFormSchema.partial()
     const parsed = partialSchema.safeParse(formData)
     if (!parsed.success) {
-      const firstError = parsed.error.errors[0]
+      const firstError = parsed.error.issues[0]
       return {
         data: null,
         error: firstError?.message ?? "Neplatna data formulare.",
@@ -343,8 +345,8 @@ export async function updateOrder(
       { changed_fields: changedFields },
     )
 
-    revalidatePath("/orders")
-    revalidatePath(`/orders/${id}`)
+    revalidatePath("/zakazky")
+    revalidatePath(`/zakazky/${id}`)
     revalidatePath("/dashboard")
 
     return { data: { id }, error: null }
@@ -411,8 +413,8 @@ export async function updateOrderStatus(
       },
     )
 
-    revalidatePath("/orders")
-    revalidatePath(`/orders/${id}`)
+    revalidatePath("/zakazky")
+    revalidatePath(`/zakazky/${id}`)
     revalidatePath("/dashboard")
 
     return { data: { id, status: newStatus }, error: null }
@@ -500,7 +502,7 @@ export async function deleteOrder(
       return { data: null, error: `Chyba pri mazani zakazky: ${deleteError.message}` }
     }
 
-    revalidatePath("/orders")
+    revalidatePath("/zakazky")
     revalidatePath("/dashboard")
 
     return { data: { id }, error: null }
@@ -524,7 +526,7 @@ export async function addOrderItem(
     // Validace dat polozky
     const parsed = orderItemSchema.safeParse(formData)
     if (!parsed.success) {
-      const firstError = parsed.error.errors[0]
+      const firstError = parsed.error.issues[0]
       return {
         data: null,
         error: firstError?.message ?? "Neplatna data polozky.",
@@ -604,7 +606,7 @@ export async function updateOrderItem(
     const partialSchema = orderItemSchema.partial()
     const parsed = partialSchema.safeParse(formData)
     if (!parsed.success) {
-      const firstError = parsed.error.errors[0]
+      const firstError = parsed.error.issues[0]
       return {
         data: null,
         error: firstError?.message ?? "Neplatna data polozky.",
